@@ -1,0 +1,72 @@
+{
+  "model_info": {
+    "type": "Random Forest Classifier",
+    "framework": "scikit-learn",
+    "training_date": "2025-12-24 21:13:56",
+    "version": "1.0"
+  },
+  "data_info": {
+    "total_samples": 2064,
+    "training_samples": 1651,
+    "test_samples": 413,
+    "normal_samples": 156,
+    "anomaly_samples": 1908,
+    "n_features": 281
+  },
+  "performance": {
+    "test_accuracy": 0.9927360774818402,
+    "test_precision": 0.9947780678851175,
+    "test_recall": 0.9973821989528796,
+    "test_f1_score": 0.996078431372549,
+    "training_time_seconds": 0.61604905128479,
+    "inference_ms_per_sample": 0.08470036504343693
+  },
+  "hyperparameters": {
+    "n_estimators": 100,
+    "max_depth": 20,
+    "class_weight": "balanced",
+    "random_state": 42
+  },
+  "top_features": [
+    {
+      "name": "node_network_transmit_bytes_total&device=eth0",
+      "importance": 0.11981053863726808
+    },
+    {
+      "name": "go_memstats_frees_total",
+      "importance": 0.08992981373229657
+    },
+    {
+      "name": "node_network_transmit_packets_total&device=eth0",
+      "importance": 0.07250342155262052
+    },
+    {
+      "name": "go_memstats_alloc_bytes_total",
+      "importance": 0.06237993969492755
+    },
+    {
+      "name": "go_memstats_mallocs_total",
+      "importance": 0.05807962851075339
+    },
+    {
+      "name": "promhttp_metric_handler_requests_total&code=200",
+      "importance": 0.0514869624419643
+    },
+    {
+      "name": "node_network_receive_packets_total&device=eth0",
+      "importance": 0.05112637876598468
+    },
+    {
+      "name": "node_memory_AnonHugePages_bytes",
+      "importance": 0.03807535285798456
+    },
+    {
+      "name": "node_memory_MemAvailable_bytes",
+      "importance": 0.03621474970571637
+    },
+    {
+      "name": "node_netstat_IpExt_OutOctets",
+      "importance": 0.03491234975731974
+    }
+  ]
+}

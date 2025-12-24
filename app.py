@@ -1,10 +1,8 @@
-# app.py - OAuth2 Anomaly Detection Streamlit App (Beautiful UI)
+# app.py - OAuth2 Anomaly Detection System (Fixed Text Visibility)
 import streamlit as st
 import pandas as pd
 import numpy as np
-import plotly.express as px
 import plotly.graph_objects as go
-from plotly.subplots import make_subplots
 import joblib
 import time
 from datetime import datetime
@@ -14,230 +12,221 @@ from datetime import datetime
 # ============================================================================
 
 st.set_page_config(
-    page_title="OAuth2 Anomaly Detector",
-    page_icon="🛡️",
+    page_title="OAuth2 Anomaly Detection",
+    page_icon="🔒",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
 # ============================================================================
-# MODERN CSS STYLING
+# FIXED CSS - ALL TEXT VISIBLE
 # ============================================================================
 
 st.markdown("""
 <style>
-    /* Import Google Fonts */
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
     
-    /* Global Styles */
     * {
         font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
     }
     
-    /* Main Background - Animated Gradient */
+    /* Clean Gradient Background */
     .stApp {
-        background: linear-gradient(-45deg, #667eea, #764ba2, #f093fb, #4facfe);
+        background: linear-gradient(-45deg, #1e3c72, #2a5298, #7474BF, #348AC7);
         background-size: 400% 400%;
-        animation: gradient 15s ease infinite;
+        animation: gradient 20s ease infinite;
     }
     
     @keyframes gradient {
-        0% { background-position: 0% 50%; }
+        0%, 100% { background-position: 0% 50%; }
         50% { background-position: 100% 50%; }
-        100% { background-position: 0% 50%; }
     }
     
-    /* Hide Streamlit Branding */
-    #MainMenu {visibility: hidden;}
-    footer {visibility: hidden;}
-    header {visibility: hidden;}
+    /* Hide Streamlit Elements */
+    #MainMenu, footer, header {visibility: hidden;}
     
-    /* Main Container */
     .main .block-container {
-        padding-top: 2rem;
-        padding-bottom: 2rem;
+        padding: 2rem 1rem;
         max-width: 1400px;
     }
     
-    /* Headers */
+    /* Typography - FIXED */
     h1 {
         color: white !important;
         text-align: center;
-        font-weight: 800 !important;
-        font-size: 3.5rem !important;
-        letter-spacing: -0.02em;
+        font-weight: 700 !important;
+        font-size: 3rem !important;
+        letter-spacing: -0.03em;
         margin-bottom: 0.5rem !important;
-        text-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        text-shadow: 2px 2px 8px rgba(0,0,0,0.3);
     }
     
     h2 {
         color: white !important;
-        font-weight: 700 !important;
-        font-size: 2rem !important;
-        margin-top: 2rem !important;
-        margin-bottom: 1rem !important;
+        font-weight: 600 !important;
+        font-size: 1.8rem !important;
+        margin: 2rem 0 1rem 0 !important;
+        text-shadow: 1px 1px 4px rgba(0,0,0,0.2);
     }
     
     h3 {
         color: white !important;
         font-weight: 600 !important;
-        font-size: 1.5rem !important;
+        font-size: 1.3rem !important;
+        text-shadow: 1px 1px 4px rgba(0,0,0,0.2);
     }
     
-    /* Subtitle */
+    /* Subtitle - FIXED */
     .subtitle {
         text-align: center;
-        color: rgba(255,255,255,0.95);
-        font-size: 1.3rem;
+        color: rgba(255,255,255,0.95) !important;
+        font-size: 1.1rem;
         font-weight: 400;
         margin-bottom: 3rem;
-        text-shadow: 0 2px 8px rgba(0,0,0,0.15);
+        letter-spacing: 0.02em;
+        text-shadow: 1px 1px 4px rgba(0,0,0,0.2);
     }
     
-    /* Card Styles - Glassmorphism */
-    .glass-card {
-        background: rgba(255, 255, 255, 0.15);
-        backdrop-filter: blur(10px);
-        border-radius: 20px;
-        padding: 2rem;
-        border: 1px solid rgba(255, 255, 255, 0.2);
-        box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
-        transition: all 0.3s ease;
+    /* All paragraph text - FIXED */
+    p {
+        color: inherit;
     }
     
-    .glass-card:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 12px 40px 0 rgba(31, 38, 135, 0.5);
+    /* Card Styles */
+    .metric-card {
+        background: white;
+        border-radius: 16px;
+        padding: 2rem 1.5rem;
+        box-shadow: 0 10px 40px rgba(0,0,0,0.12);
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        border: 1px solid rgba(30, 60, 114, 0.1);
+        height: 100%;
     }
     
-    /* White Cards */
-    .white-card {
+    .metric-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 20px 60px rgba(30, 60, 114, 0.2);
+    }
+    
+    .content-card {
         background: white;
         border-radius: 20px;
-        padding: 2rem;
+        padding: 2.5rem;
         box-shadow: 0 10px 40px rgba(0,0,0,0.1);
-        transition: all 0.3s ease;
-        border: 1px solid rgba(102, 126, 234, 0.1);
+        margin-bottom: 2rem;
+        border: 1px solid rgba(30, 60, 114, 0.08);
     }
     
-    .white-card:hover {
-        box-shadow: 0 15px 50px rgba(102, 126, 234, 0.2);
-        transform: translateY(-2px);
-    }
-    
-    /* Metric Cards */
-    [data-testid="stMetricValue"] {
-        font-size: 2.8rem !important;
-        font-weight: 800 !important;
-        color: #667eea !important;
-    }
-    
-    [data-testid="stMetricLabel"] {
-        font-size: 1rem !important;
-        font-weight: 600 !important;
-        color: #666 !important;
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-    }
-    
-    [data-testid="stMetricDelta"] {
-        font-size: 1rem !important;
-    }
-    
-    /* Buttons - Modern Gradient */
+    /* Buttons */
     .stButton>button {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white;
-        border: none;
-        border-radius: 50px;
-        padding: 1rem 3rem;
-        font-weight: 700;
-        font-size: 1.1rem;
-        letter-spacing: 0.02em;
-        text-transform: uppercase;
-        transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-        box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
+        background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%) !important;
+        color: white !important;
+        border: none !important;
+        border-radius: 12px;
+        padding: 0.9rem 2.5rem;
+        font-weight: 600 !important;
+        font-size: 1rem !important;
+        letter-spacing: 0.03em;
+        transition: all 0.3s ease;
+        box-shadow: 0 8px 24px rgba(30, 60, 114, 0.25);
         width: 100%;
     }
     
     .stButton>button:hover {
-        transform: translateY(-3px) scale(1.02);
-        box-shadow: 0 15px 40px rgba(102, 126, 234, 0.5);
-        background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
-    }
-    
-    .stButton>button:active {
-        transform: translateY(-1px);
+        transform: translateY(-2px);
+        box-shadow: 0 12px 32px rgba(30, 60, 114, 0.35);
+        background: linear-gradient(135deg, #2a5298 0%, #1e3c72 100%) !important;
     }
     
     /* File Uploader */
     [data-testid="stFileUploader"] {
         background: white;
-        border-radius: 20px;
+        border-radius: 16px;
         padding: 2rem;
-        border: 3px dashed #667eea;
+        border: 2px dashed rgba(30, 60, 114, 0.3);
         transition: all 0.3s ease;
     }
     
     [data-testid="stFileUploader"]:hover {
-        border-color: #764ba2;
-        background: rgba(102, 126, 234, 0.05);
+        border-color: #2a5298;
+        background: rgba(30, 60, 114, 0.02);
     }
     
-    /* Number Input */
+    [data-testid="stFileUploader"] label {
+        color: #1e3c72 !important;
+        font-weight: 600 !important;
+    }
+    
+    /* Input Fields */
     .stNumberInput>div>div>input {
-        background: white;
-        border: 2px solid rgba(102, 126, 234, 0.3);
-        border-radius: 12px;
-        padding: 0.75rem;
-        font-size: 1rem;
-        font-weight: 600;
-        color: #333;
-        transition: all 0.3s ease;
+        background: white !important;
+        border: 2px solid rgba(30, 60, 114, 0.2) !important;
+        border-radius: 10px;
+        padding: 0.7rem;
+        font-size: 0.95rem !important;
+        font-weight: 500 !important;
+        color: #1e3c72 !important;
+        transition: all 0.2s ease;
     }
     
     .stNumberInput>div>div>input:focus {
-        border-color: #667eea;
-        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        border-color: #2a5298 !important;
+        box-shadow: 0 0 0 3px rgba(42, 82, 152, 0.1);
+    }
+    
+    .stNumberInput label {
+        color: #1e3c72 !important;
+        font-weight: 600 !important;
     }
     
     /* Select Box */
     .stSelectbox>div>div>div {
-        background: white;
-        border: 2px solid rgba(102, 126, 234, 0.3);
-        border-radius: 12px;
-        font-weight: 600;
+        background: white !important;
+        border: 2px solid rgba(30, 60, 114, 0.2) !important;
+        border-radius: 10px;
+        font-weight: 500 !important;
+        color: #1e3c72 !important;
+    }
+    
+    .stSelectbox label {
+        color: #1e3c72 !important;
+        font-weight: 600 !important;
     }
     
     /* DataFrames */
     .dataframe {
-        border-radius: 15px !important;
+        border-radius: 12px !important;
         overflow: hidden !important;
         border: none !important;
         box-shadow: 0 4px 20px rgba(0,0,0,0.08) !important;
     }
     
     .dataframe thead tr th {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+        background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%) !important;
         color: white !important;
-        font-weight: 700 !important;
+        font-weight: 600 !important;
         text-transform: uppercase;
-        font-size: 0.85rem;
-        letter-spacing: 0.05em;
+        font-size: 0.8rem !important;
+        letter-spacing: 0.08em;
         padding: 1rem !important;
     }
     
     .dataframe tbody tr:nth-child(even) {
-        background-color: rgba(102, 126, 234, 0.05) !important;
+        background-color: rgba(30, 60, 114, 0.03) !important;
     }
     
     .dataframe tbody tr:hover {
-        background-color: rgba(102, 126, 234, 0.1) !important;
+        background-color: rgba(30, 60, 114, 0.08) !important;
     }
     
-    /* Sidebar Styling */
+    .dataframe tbody td {
+        color: #1e3c72 !important;
+        font-weight: 500 !important;
+    }
+    
+    /* Sidebar */
     [data-testid="stSidebar"] {
-        background: linear-gradient(180deg, rgba(102, 126, 234, 0.95) 0%, rgba(118, 75, 162, 0.95) 100%);
+        background: linear-gradient(180deg, rgba(30, 60, 114, 0.96) 0%, rgba(42, 82, 152, 0.96) 100%);
         backdrop-filter: blur(10px);
     }
     
@@ -246,120 +235,131 @@ st.markdown("""
     }
     
     [data-testid="stSidebar"] .stRadio>label {
-        font-weight: 600;
-        font-size: 1.1rem;
+        font-weight: 600 !important;
+        font-size: 1rem !important;
+        color: white !important;
     }
     
     [data-testid="stSidebar"] .stRadio>div {
-        background: rgba(255, 255, 255, 0.1);
-        border-radius: 15px;
-        padding: 1rem;
+        background: rgba(255, 255, 255, 0.08);
+        border-radius: 12px;
+        padding: 0.8rem;
+    }
+    
+    [data-testid="stSidebar"] .stRadio>div>label {
+        padding: 0.6rem 1rem;
+        border-radius: 8px;
+        transition: all 0.2s ease;
+        color: white !important;
     }
     
     [data-testid="stSidebar"] .stRadio>div>label:hover {
-        background: rgba(255, 255, 255, 0.2);
-        border-radius: 10px;
-        padding: 0.5rem;
+        background: rgba(255, 255, 255, 0.15);
     }
     
     /* Expander */
     .streamlit-expanderHeader {
-        background: white;
-        border-radius: 15px;
-        font-weight: 600;
-        color: #667eea !important;
-        border: 2px solid rgba(102, 126, 234, 0.2);
+        background: white !important;
+        border-radius: 12px;
+        font-weight: 600 !important;
+        color: #1e3c72 !important;
+        border: 2px solid rgba(30, 60, 114, 0.15);
     }
     
     .streamlit-expanderHeader:hover {
-        background: rgba(102, 126, 234, 0.05);
-        border-color: #667eea;
+        background: rgba(30, 60, 114, 0.03) !important;
+        border-color: #2a5298;
     }
     
-    /* Success/Info/Warning Messages */
+    /* Messages - FIXED */
     .stSuccess {
-        background: linear-gradient(135deg, #d4fc79 0%, #96e6a1 100%);
-        border-radius: 15px;
-        padding: 1rem;
-        border: none;
+        background: linear-gradient(135deg, #d4fc79 0%, #96e6a1 100%) !important;
+        border-radius: 12px !important;
+        padding: 1rem !important;
+        border: none !important;
         color: #155724 !important;
-        font-weight: 600;
+        font-weight: 600 !important;
+    }
+    
+    .stSuccess > div {
+        color: #155724 !important;
     }
     
     .stInfo {
-        background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
-        border-radius: 15px;
-        padding: 1rem;
-        border: none;
-        font-weight: 600;
+        background: linear-gradient(135deg, #a8edea 0%, #bfe9ff 100%) !important;
+        border-radius: 12px !important;
+        padding: 1rem !important;
+        border: none !important;
+        color: #004085 !important;
+        font-weight: 600 !important;
+    }
+    
+    .stInfo > div {
+        color: #004085 !important;
     }
     
     .stError {
-        background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%);
-        border-radius: 15px;
-        padding: 1rem;
-        border: none;
+        background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%) !important;
+        border-radius: 12px !important;
+        padding: 1rem !important;
+        border: none !important;
         color: white !important;
-        font-weight: 600;
+        font-weight: 600 !important;
+    }
+    
+    .stError > div {
+        color: white !important;
+    }
+    
+    /* Spinner text */
+    .stSpinner > div {
+        color: white !important;
+    }
+    
+    /* Progress text */
+    .stProgress ~ div {
+        color: white !important;
     }
     
     /* Progress Bar */
     .stProgress>div>div>div {
-        background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+        background: linear-gradient(90deg, #1e3c72 0%, #2a5298 100%);
         border-radius: 10px;
-        height: 12px;
-    }
-    
-    /* Tabs */
-    .stTabs [data-baseweb="tab-list"] {
-        gap: 1rem;
-    }
-    
-    .stTabs [data-baseweb="tab"] {
-        background: white;
-        border-radius: 10px;
-        padding: 1rem 2rem;
-        font-weight: 600;
-        color: #667eea;
-        border: 2px solid rgba(102, 126, 234, 0.2);
-    }
-    
-    .stTabs [aria-selected="true"] {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        color: white !important;
-        border: none;
-    }
-    
-    /* Spinner */
-    .stSpinner>div {
-        border-top-color: white !important;
+        height: 10px;
     }
     
     /* Download Button */
     .stDownloadButton>button {
-        background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
-        color: white;
-        border: none;
-        border-radius: 50px;
-        padding: 1rem 2rem;
-        font-weight: 700;
-        font-size: 1rem;
-        box-shadow: 0 8px 25px rgba(17, 153, 142, 0.3);
+        background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%) !important;
+        color: white !important;
+        border: none !important;
+        border-radius: 12px;
+        padding: 0.9rem 2rem;
+        font-weight: 600 !important;
+        font-size: 0.95rem !important;
+        box-shadow: 0 8px 24px rgba(17, 153, 142, 0.25);
     }
     
     .stDownloadButton>button:hover {
         transform: translateY(-2px);
-        box-shadow: 0 12px 35px rgba(17, 153, 142, 0.5);
+        box-shadow: 0 12px 32px rgba(17, 153, 142, 0.35);
     }
     
-    /* Animations */
-    @keyframes fadeIn {
-        from { opacity: 0; transform: translateY(20px); }
-        to { opacity: 1; transform: translateY(0); }
+    /* Metric Values */
+    .metric-value {
+        font-size: 2.5rem;
+        font-weight: 800;
+        line-height: 1;
+        margin: 0.5rem 0;
     }
     
-    .stMarkdown {
-        animation: fadeIn 0.6s ease-out;
+    .metric-label {
+        font-size: 0.85rem;
+        font-weight: 600;
+        color: #6b7280;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        margin-bottom: 0.3rem;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -377,7 +377,7 @@ def load_model_artifacts():
         feature_names = joblib.load('models/feature_names.pkl')
         return model, scaler, feature_names
     except FileNotFoundError:
-        st.error("⚠️ Model files not found. Please ensure models are saved in 'models/' directory.")
+        st.error("Model files not found. Please ensure models are in the 'models/' directory.")
         st.stop()
 
 model, scaler, feature_names = load_model_artifacts()
@@ -420,52 +420,52 @@ def display_results(df, predictions, probabilities):
     
     anomaly_count = predictions.sum()
     normal_count = len(predictions) - anomaly_count
+    avg_confidence = probabilities[predictions == 1].mean() if anomaly_count > 0 else 0
     
     st.markdown("<br>", unsafe_allow_html=True)
     
-    # Header with icon
+    # Results Header
     st.markdown("""
-    <div style='text-align: center; margin: 2rem 0;'>
-        <h2 style='font-size: 2.5rem; margin: 0;'>📊 Detection Results</h2>
-        <p style='color: rgba(255,255,255,0.8); font-size: 1.1rem;'>Analysis complete - here's what we found</p>
+    <div style='text-align: center; margin: 2rem 0 3rem 0;'>
+        <h2 style='font-size: 2rem; margin: 0 0 0.5rem 0; color: white;'>Detection Results</h2>
+        <p style='color: rgba(255,255,255,0.9); font-size: 1rem;'>Analysis complete</p>
     </div>
     """, unsafe_allow_html=True)
     
-    # Metrics cards with custom styling
+    # Metrics Cards
     col1, col2, col3, col4 = st.columns(4, gap="large")
     
     with col1:
         st.markdown(f"""
-        <div class='white-card' style='text-align: center;'>
-            <p style='color: #999; font-size: 0.9rem; font-weight: 600; text-transform: uppercase; margin-bottom: 0.5rem;'>Total Samples</p>
-            <p style='font-size: 3rem; font-weight: 800; color: #667eea; margin: 0;'>{len(predictions):,}</p>
+        <div class='metric-card'>
+            <div class='metric-label'>Total Samples</div>
+            <div class='metric-value' style='color: #1e3c72;'>{len(predictions):,}</div>
         </div>
         """, unsafe_allow_html=True)
     
     with col2:
         st.markdown(f"""
-        <div class='white-card' style='text-align: center;'>
-            <p style='color: #999; font-size: 0.9rem; font-weight: 600; text-transform: uppercase; margin-bottom: 0.5rem;'>🟢 Normal</p>
-            <p style='font-size: 3rem; font-weight: 800; color: #10b981; margin: 0;'>{normal_count:,}</p>
-            <p style='color: #10b981; font-weight: 600; font-size: 1.1rem;'>{normal_count/len(predictions)*100:.1f}%</p>
+        <div class='metric-card'>
+            <div class='metric-label'>Normal</div>
+            <div class='metric-value' style='color: #10b981;'>{normal_count:,}</div>
+            <div style='color: #10b981; font-weight: 600; font-size: 1rem; margin-top: 0.3rem;'>{normal_count/len(predictions)*100:.1f}%</div>
         </div>
         """, unsafe_allow_html=True)
     
     with col3:
         st.markdown(f"""
-        <div class='white-card' style='text-align: center;'>
-            <p style='color: #999; font-size: 0.9rem; font-weight: 600; text-transform: uppercase; margin-bottom: 0.5rem;'>🔴 Anomalies</p>
-            <p style='font-size: 3rem; font-weight: 800; color: #ef4444; margin: 0;'>{anomaly_count:,}</p>
-            <p style='color: #ef4444; font-weight: 600; font-size: 1.1rem;'>{anomaly_count/len(predictions)*100:.1f}%</p>
+        <div class='metric-card'>
+            <div class='metric-label'>Anomalies</div>
+            <div class='metric-value' style='color: #ef4444;'>{anomaly_count:,}</div>
+            <div style='color: #ef4444; font-weight: 600; font-size: 1rem; margin-top: 0.3rem;'>{anomaly_count/len(predictions)*100:.1f}%</div>
         </div>
         """, unsafe_allow_html=True)
     
     with col4:
-        avg_confidence = probabilities[predictions == 1].mean() if anomaly_count > 0 else 0
         st.markdown(f"""
-        <div class='white-card' style='text-align: center;'>
-            <p style='color: #999; font-size: 0.9rem; font-weight: 600; text-transform: uppercase; margin-bottom: 0.5rem;'>Avg Confidence</p>
-            <p style='font-size: 3rem; font-weight: 800; color: #f59e0b; margin: 0;'>{avg_confidence:.0%}</p>
+        <div class='metric-card'>
+            <div class='metric-label'>Avg Confidence</div>
+            <div class='metric-value' style='color: #f59e0b;'>{avg_confidence:.0%}</div>
         </div>
         """, unsafe_allow_html=True)
     
@@ -480,16 +480,13 @@ def display_results(df, predictions, probabilities):
             values=[normal_count, anomaly_count],
             marker=dict(colors=['#10b981', '#ef4444']),
             hole=0.5,
-            textfont=dict(size=18, color='white', family='Inter'),
+            textfont=dict(size=16, color='white', family='Inter'),
             textinfo='label+percent'
         )])
         fig_pie.update_layout(
-            title=dict(
-                text="<b>Detection Distribution</b>",
-                font=dict(size=22, color='white', family='Inter')
-            ),
+            title=dict(text="<b>Distribution</b>", font=dict(size=20, color='white', family='Inter')),
             showlegend=False,
-            height=400,
+            height=380,
             paper_bgcolor='rgba(0,0,0,0)',
             plot_bgcolor='rgba(0,0,0,0)',
             font=dict(color='white', family='Inter')
@@ -500,22 +497,19 @@ def display_results(df, predictions, probabilities):
         fig_hist = go.Figure()
         fig_hist.add_trace(go.Histogram(
             x=probabilities,
-            nbinsx=40,
+            nbinsx=35,
             marker=dict(
                 color=probabilities,
-                colorscale='Turbo',
+                colorscale='Bluered',
                 line=dict(color='white', width=0.5)
             ),
-            hovertemplate='<b>Confidence: %{x:.2%}</b><br>Count: %{y}<extra></extra>'
+            hovertemplate='Confidence: %{x:.2%}<br>Count: %{y}<extra></extra>'
         ))
         fig_hist.update_layout(
-            title=dict(
-                text="<b>Confidence Distribution</b>",
-                font=dict(size=22, color='white', family='Inter')
-            ),
-            xaxis_title="Anomaly Probability",
+            title=dict(text="<b>Confidence Distribution</b>", font=dict(size=20, color='white', family='Inter')),
+            xaxis_title="Probability",
             yaxis_title="Frequency",
-            height=400,
+            height=380,
             paper_bgcolor='rgba(0,0,0,0)',
             plot_bgcolor='rgba(255,255,255,0.05)',
             font=dict(color='white', family='Inter'),
@@ -526,18 +520,18 @@ def display_results(df, predictions, probabilities):
     
     st.markdown("<br>", unsafe_allow_html=True)
     
-    # Results table with modern styling
+    # Results Table
     st.markdown("""
     <div style='text-align: center; margin: 2rem 0 1rem 0;'>
-        <h3 style='font-size: 1.8rem;'>📋 Detailed Results</h3>
+        <h3 style='font-size: 1.5rem; color: white;'>Detailed Results</h3>
     </div>
     """, unsafe_allow_html=True)
     
     results_df = pd.DataFrame({
         'ID': range(1, len(predictions) + 1),
-        'Status': ['🔴 Anomaly' if p == 1 else '🟢 Normal' for p in predictions],
+        'Status': ['Anomaly' if p == 1 else 'Normal' for p in predictions],
         'Confidence': [f"{p:.2%}" for p in probabilities],
-        'Risk': ['🔥 High' if p > 0.9 else '⚠️ Medium' if p > 0.7 else '✅ Low' for p in probabilities]
+        'Risk': ['High' if p > 0.9 else 'Medium' if p > 0.7 else 'Low' for p in probabilities]
     })
     
     if 'scenario' in df.columns:
@@ -546,26 +540,25 @@ def display_results(df, predictions, probabilities):
     col1, col2, col3 = st.columns([1, 2, 1])
     with col1:
         show_filter = st.selectbox(
-            "🔍 Filter Results",
-            ["All", "Anomalies Only", "Normal Only", "High Risk"],
-            label_visibility="visible"
+            "Filter Results",
+            ["All", "Anomalies Only", "Normal Only", "High Risk"]
         )
     
     if show_filter == "Anomalies Only":
-        results_df = results_df[results_df['Status'] == '🔴 Anomaly']
+        results_df = results_df[results_df['Status'] == 'Anomaly']
     elif show_filter == "Normal Only":
-        results_df = results_df[results_df['Status'] == '🟢 Normal']
+        results_df = results_df[results_df['Status'] == 'Normal']
     elif show_filter == "High Risk":
-        results_df = results_df[results_df['Risk'] == '🔥 High']
+        results_df = results_df[results_df['Risk'] == 'High']
     
     st.dataframe(results_df, use_container_width=True, height=400)
     
-    # Download button
+    # Download
     csv = results_df.to_csv(index=False)
     col1, col2, col3 = st.columns([1, 2, 1])
     with col2:
         st.download_button(
-            label="📥 Download Complete Report",
+            label="Download Report",
             data=csv,
             file_name=f"anomaly_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
             mime="text/csv",
@@ -576,8 +569,8 @@ def display_results(df, predictions, probabilities):
 # HEADER
 # ============================================================================
 
-st.markdown("<h1>🛡️ OAuth2 Anomaly Detector</h1>", unsafe_allow_html=True)
-st.markdown("<p class='subtitle'>AI-Powered Security Monitoring • 99.6% Accuracy • Real-time Detection</p>", unsafe_allow_html=True)
+st.markdown("<h1>OAuth2 Anomaly Detection</h1>", unsafe_allow_html=True)
+st.markdown("<p class='subtitle'>Enterprise Security Monitoring Platform • 99.6% Accuracy • Real-time Analysis</p>", unsafe_allow_html=True)
 
 # ============================================================================
 # SIDEBAR
@@ -585,12 +578,12 @@ st.markdown("<p class='subtitle'>AI-Powered Security Monitoring • 99.6% Accura
 
 with st.sidebar:
     st.markdown("<br>", unsafe_allow_html=True)
-    st.markdown("### 🎯 Navigation")
+    st.markdown("### Navigation")
     st.markdown("<br>", unsafe_allow_html=True)
     
     page = st.radio(
         "",
-        ["🎯 Detect Anomalies", "📊 Performance Dashboard", "🔍 Feature Insights"],
+        ["Detection", "Performance", "Insights"],
         label_visibility="collapsed"
     )
     
@@ -598,13 +591,13 @@ with st.sidebar:
     st.markdown("---")
     st.markdown("<br>", unsafe_allow_html=True)
     
-    st.markdown("### 📌 Quick Stats")
+    st.markdown("### Model Information")
     st.markdown(f"""
-    <div style='background: rgba(255,255,255,0.1); padding: 1rem; border-radius: 10px; margin-top: 1rem;'>
-        <p style='margin: 0.5rem 0;'><b>Model:</b> Random Forest</p>
-        <p style='margin: 0.5rem 0;'><b>Features:</b> {len(feature_names)}</p>
-        <p style='margin: 0.5rem 0;'><b>F1-Score:</b> 99.61%</p>
-        <p style='margin: 0.5rem 0;'><b>Speed:</b> 0.12ms/sample</p>
+    <div style='background: rgba(255,255,255,0.1); padding: 1.2rem; border-radius: 12px; margin-top: 1rem;'>
+        <p style='margin: 0.6rem 0; font-size: 0.9rem; color: white;'><b>Algorithm:</b> Random Forest</p>
+        <p style='margin: 0.6rem 0; font-size: 0.9rem; color: white;'><b>Features:</b> {len(feature_names)}</p>
+        <p style='margin: 0.6rem 0; font-size: 0.9rem; color: white;'><b>F1-Score:</b> 99.61%</p>
+        <p style='margin: 0.6rem 0; font-size: 0.9rem; color: white;'><b>Latency:</b> 0.12ms</p>
     </div>
     """, unsafe_allow_html=True)
 
@@ -612,29 +605,27 @@ with st.sidebar:
 # PAGE 1: DETECTION
 # ============================================================================
 
-if page == "🎯 Detect Anomalies":
+if page == "Detection":
     
-    # Modern hero section
     st.markdown("""
-    <div style='background: rgba(255,255,255,0.1); backdrop-filter: blur(10px); padding: 3rem; border-radius: 25px; text-align: center; margin: 2rem auto 3rem auto; max-width: 800px; border: 1px solid rgba(255,255,255,0.2);'>
-        <h2 style='font-size: 2.2rem; margin: 0 0 1rem 0; color: white;'>Ready to Detect Threats?</h2>
-        <p style='font-size: 1.2rem; color: rgba(255,255,255,0.9); margin: 0;'>Upload your metrics or generate test data to get started</p>
+    <div style='background: rgba(255,255,255,0.1); backdrop-filter: blur(10px); padding: 2.5rem; border-radius: 20px; text-align: center; margin: 2rem auto 3rem auto; max-width: 800px; border: 1px solid rgba(255,255,255,0.2);'>
+        <h2 style='font-size: 2rem; margin: 0 0 0.8rem 0; color: white; font-weight: 600;'>Anomaly Detection</h2>
+        <p style='font-size: 1.05rem; color: rgba(255,255,255,0.95); margin: 0;'>Upload your OAuth2 metrics or generate synthetic test data</p>
     </div>
     """, unsafe_allow_html=True)
     
-    # Two options with better layout
     col1, col2 = st.columns(2, gap="large")
     
     with col1:
         st.markdown("""
-        <div class='white-card'>
-            <h3 style='color: #667eea; margin-top: 0; font-size: 1.5rem;'>📤 Upload CSV File</h3>
-            <p style='color: #666; margin-bottom: 1.5rem;'>Upload your OAuth2 metrics for real-time analysis</p>
+        <div class='content-card'>
+            <h3 style='color: #1e3c72; margin-top: 0; font-size: 1.3rem;'>Upload CSV File</h3>
+            <p style='color: #6b7280; margin-bottom: 1.5rem;'>Upload your OAuth2 metrics for analysis</p>
         </div>
         """, unsafe_allow_html=True)
         
         uploaded_file = st.file_uploader(
-            "Drop your CSV file here",
+            "Drop CSV file here",
             type=['csv'],
             help="Upload a CSV file with your OAuth2 metrics",
             key="file_upload",
@@ -643,9 +634,9 @@ if page == "🎯 Detect Anomalies":
     
     with col2:
         st.markdown("""
-        <div class='white-card'>
-            <h3 style='color: #764ba2; margin-top: 0; font-size: 1.5rem;'>🎲 Generate Test Data</h3>
-            <p style='color: #666; margin-bottom: 1.5rem;'>Try the model with synthetic data instantly</p>
+        <div class='content-card'>
+            <h3 style='color: #1e3c72; margin-top: 0; font-size: 1.3rem;'>Generate Test Data</h3>
+            <p style='color: #6b7280; margin-bottom: 1.5rem;'>Create synthetic data for testing</p>
         </div>
         """, unsafe_allow_html=True)
         
@@ -656,70 +647,68 @@ if page == "🎯 Detect Anomalies":
             random_seed = st.number_input("Seed", min_value=0, max_value=9999, value=42)
         
         st.markdown("<br>", unsafe_allow_html=True)
-        generate_btn = st.button("🎲 Generate & Analyze", use_container_width=True)
+        generate_btn = st.button("Generate & Analyze", use_container_width=True)
     
-    # Handle file upload
     if uploaded_file is not None:
         
-        with st.spinner("📥 Processing your data..."):
+        with st.spinner("Processing data..."):
             df = pd.read_csv(uploaded_file)
             time.sleep(0.3)
         
-        st.success(f"✅ Successfully loaded **{len(df):,}** samples with **{len(df.columns)}** features")
+        st.success(f"Loaded {len(df):,} samples with {len(df.columns)} features")
         
-        with st.expander("👀 Preview Your Data", expanded=False):
+        with st.expander("Preview Data", expanded=False):
             st.dataframe(df.head(10), use_container_width=True)
         
         st.markdown("<br>", unsafe_allow_html=True)
         col1, col2, col3 = st.columns([1, 1, 1])
         with col2:
-            predict_btn = st.button("🔮 Analyze for Anomalies", use_container_width=True, key="predict_upload")
+            predict_btn = st.button("Analyze", use_container_width=True, key="predict_upload")
         
         if predict_btn:
             progress_bar = st.progress(0)
             status_text = st.empty()
             
-            status_text.text("🔄 Preprocessing features...")
+            status_text.markdown("<p style='color: white;'>Preprocessing features...</p>", unsafe_allow_html=True)
             progress_bar.progress(25)
             time.sleep(0.3)
             
             try:
                 X = df[feature_names]
             except KeyError:
-                st.error("❌ CSV columns don't match expected features")
+                st.error("CSV columns don't match expected features")
                 st.stop()
             
-            status_text.text("🧠 Running ML model...")
+            status_text.markdown("<p style='color: white;'>Running model...</p>", unsafe_allow_html=True)
             progress_bar.progress(50)
             X_scaled = scaler.transform(X)
             
-            status_text.text("🎯 Generating predictions...")
+            status_text.markdown("<p style='color: white;'>Generating predictions...</p>", unsafe_allow_html=True)
             progress_bar.progress(75)
             predictions = model.predict(X_scaled)
             probabilities = model.predict_proba(X_scaled)[:, 1]
             
             progress_bar.progress(100)
-            status_text.text("✅ Analysis Complete!")
+            status_text.markdown("<p style='color: white;'>Complete</p>", unsafe_allow_html=True)
             time.sleep(0.5)
             progress_bar.empty()
             status_text.empty()
             
             display_results(df, predictions, probabilities)
     
-    # Handle generate test data
     elif generate_btn:
         
-        with st.spinner("🎲 Generating synthetic test data..."):
+        with st.spinner("Generating test data..."):
             df = generate_sample_data(n_samples=n_samples, seed=random_seed)
             time.sleep(0.5)
         
-        st.success(f"✅ Generated **{len(df):,}** synthetic samples with **{len(feature_names)}** features")
+        st.success(f"Generated {len(df):,} synthetic samples with {len(feature_names)} features")
         
-        with st.expander("👀 Preview Generated Data", expanded=False):
+        with st.expander("Preview Generated Data", expanded=False):
             st.dataframe(df.head(10), use_container_width=True)
-            st.info("💡 This is randomly generated data that mimics real OAuth2 metrics")
+            st.info("Randomly generated data that mimics real OAuth2 metrics")
         
-        with st.spinner("🔮 Analyzing data..."):
+        with st.spinner("Analyzing..."):
             progress_bar = st.progress(0)
             
             progress_bar.progress(33)
@@ -736,40 +725,39 @@ if page == "🎯 Detect Anomalies":
         display_results(df, predictions, probabilities)
 
 # ============================================================================
-# PAGE 2: DASHBOARD
+# PAGE 2: PERFORMANCE
 # ============================================================================
 
-elif page == "📊 Performance Dashboard":
+elif page == "Performance":
     
     st.markdown("""
-    <div style='text-align: center; margin: 2rem 0;'>
-        <h2 style='font-size: 2.5rem; margin: 0;'>📊 Model Performance</h2>
-        <p style='color: rgba(255,255,255,0.8); font-size: 1.1rem;'>Comprehensive metrics and evaluation results</p>
+    <div style='text-align: center; margin: 2rem 0 3rem 0;'>
+        <h2 style='font-size: 2rem; margin: 0 0 0.5rem 0; color: white;'>Model Performance</h2>
+        <p style='color: rgba(255,255,255,0.9); font-size: 1rem;'>Comprehensive evaluation metrics</p>
     </div>
     """, unsafe_allow_html=True)
     
-    # Performance metrics with gauges
     col1, col2, col3, col4 = st.columns(4, gap="medium")
     
     metrics_data = {
-        'F1-Score': (0.9961, '99.61%'),
-        'Precision': (0.9948, '99.48%'),
-        'Recall': (0.9974, '99.74%'),
-        'Accuracy': (0.9927, '99.27%')
+        'F1-Score': 0.9961,
+        'Precision': 0.9948,
+        'Recall': 0.9974,
+        'Accuracy': 0.9927
     }
     
-    for col, (metric_name, (value, display)) in zip([col1, col2, col3, col4], metrics_data.items()):
+    for col, (metric_name, value) in zip([col1, col2, col3, col4], metrics_data.items()):
         with col:
             fig = go.Figure(go.Indicator(
                 mode="gauge+number",
                 value=value * 100,
-                title={'text': f"<b>{metric_name}</b>", 'font': {'color': 'white', 'size': 18, 'family': 'Inter'}},
-                number={'suffix': '%', 'font': {'size': 36, 'color': 'white', 'family': 'Inter'}},
+                title={'text': f"<b>{metric_name}</b>", 'font': {'color': 'white', 'size': 16, 'family': 'Inter'}},
+                number={'suffix': '%', 'font': {'size': 32, 'color': 'white', 'family': 'Inter'}},
                 gauge={
                     'axis': {'range': [0, 100], 'tickcolor': 'white'},
-                    'bar': {'color': '#667eea', 'thickness': 0.75},
+                    'bar': {'color': '#1e3c72', 'thickness': 0.7},
                     'bgcolor': 'rgba(255,255,255,0.2)',
-                    'borderwidth': 3,
+                    'borderwidth': 2,
                     'bordercolor': 'white',
                     'steps': [
                         {'range': [0, 70], 'color': 'rgba(239, 68, 68, 0.3)'},
@@ -780,22 +768,21 @@ elif page == "📊 Performance Dashboard":
                 }
             ))
             fig.update_layout(
-                height=220,
+                height=210,
                 paper_bgcolor='rgba(0,0,0,0)',
                 font={'color': 'white', 'family': 'Inter'},
-                margin=dict(l=20, r=20, t=60, b=20)
+                margin=dict(l=20, r=20, t=50, b=20)
             )
             st.plotly_chart(fig, use_container_width=True)
     
     st.markdown("<br><br>", unsafe_allow_html=True)
     
-    # Confusion Matrix and Stats
     col1, col2 = st.columns(2, gap="large")
     
     with col1:
         st.markdown("""
         <div style='text-align: center; margin-bottom: 1rem;'>
-            <h3 style='font-size: 1.8rem;'>🎯 Confusion Matrix</h3>
+            <h3 style='font-size: 1.5rem; color: white;'>Confusion Matrix</h3>
         </div>
         """, unsafe_allow_html=True)
         
@@ -807,60 +794,52 @@ elif page == "📊 Performance Dashboard":
             y=['Actual Normal', 'Actual Anomaly'],
             text=conf_matrix,
             texttemplate='<b>%{text}</b>',
-            textfont={"size": 28, "color": "white", "family": "Inter"},
-            colorscale=[[0, '#e0e7ff'], [1, '#667eea']],
+            textfont={"size": 24, "color": "white", "family": "Inter"},
+            colorscale=[[0, '#e0e7ff'], [1, '#1e3c72']],
             showscale=False,
             hovertemplate='<b>%{y}</b><br>%{x}<br>Count: %{z}<extra></extra>'
         ))
         fig.update_layout(
-            height=380,
+            height=360,
             paper_bgcolor='rgba(0,0,0,0)',
             plot_bgcolor='rgba(0,0,0,0)',
-            font=dict(color='white', size=13, family='Inter'),
-            xaxis=dict(side='bottom'),
+            font=dict(color='white', size=12, family='Inter'),
             margin=dict(l=20, r=20, t=20, b=20)
         )
         st.plotly_chart(fig, use_container_width=True)
         
-        st.success("✅ Only **3 errors** out of 413 samples — **99.3% accuracy**!")
+        st.success("Only 3 errors out of 413 samples (99.3% accuracy)")
     
     with col2:
         st.markdown("""
         <div style='text-align: center; margin-bottom: 1rem;'>
-            <h3 style='font-size: 1.8rem;'>⚡ Performance Stats</h3>
+            <h3 style='font-size: 1.5rem; color: white;'>Performance Statistics</h3>
         </div>
         """, unsafe_allow_html=True)
         
         stats_df = pd.DataFrame({
-            'Metric': ['✅ True Positives', '✅ True Negatives', '❌ False Positives', '❌ False Negatives', 
-                       '⚡ Inference Time', '📊 Training Samples'],
+            'Metric': ['True Positives', 'True Negatives', 'False Positives', 'False Negatives', 
+                       'Inference Time', 'Training Samples'],
             'Value': ['381', '29', '2', '1', '0.12 ms', '1,651']
         })
         
-        st.dataframe(
-            stats_df,
-            use_container_width=True,
-            hide_index=True,
-            height=300
-        )
+        st.dataframe(stats_df, use_container_width=True, hide_index=True, height=280)
         
-        st.info("💡 **Real-time capable**: Process **8,000+ samples per second**")
-        st.info("🚀 **Production ready**: Sub-millisecond latency per prediction")
+        st.info("Process 8,000+ samples per second with sub-millisecond latency")
 
 # ============================================================================
 # PAGE 3: INSIGHTS
 # ============================================================================
 
-elif page == "🔍 Feature Insights":
+elif page == "Insights":
     
     st.markdown("""
-    <div style='text-align: center; margin: 2rem 0;'>
-        <h2 style='font-size: 2.5rem; margin: 0;'>🔍 Feature Importance</h2>
-        <p style='color: rgba(255,255,255,0.8); font-size: 1.1rem;'>Understand what drives anomaly detection</p>
+    <div style='text-align: center; margin: 2rem 0 3rem 0;'>
+        <h2 style='font-size: 2rem; margin: 0 0 0.5rem 0; color: white;'>Feature Importance</h2>
+        <p style='color: rgba(255,255,255,0.9); font-size: 1rem;'>Understanding detection signals</p>
     </div>
     """, unsafe_allow_html=True)
     
-    # Feature importance data
     importance_df = pd.DataFrame({
         'Feature': [
             'network_transmit_bytes',
@@ -878,83 +857,78 @@ elif page == "🔍 Feature Insights":
                        0.0515, 0.0511, 0.0381, 0.0362, 0.0349]
     })
     
-    # Modern bar chart
     fig = go.Figure(go.Bar(
         x=importance_df['Importance'],
         y=importance_df['Feature'],
         orientation='h',
         marker=dict(
             color=importance_df['Importance'],
-            colorscale='Plasma',
-            line=dict(color='white', width=1.5),
-            cornerradius=5
+            colorscale='Blues',
+            line=dict(color='white', width=1)
         ),
         text=[f"<b>{x:.1%}</b>" for x in importance_df['Importance']],
         textposition='outside',
-        textfont=dict(size=14, color='white', family='Inter'),
+        textfont=dict(size=13, color='white', family='Inter'),
         hovertemplate='<b>%{y}</b><br>Importance: %{x:.2%}<extra></extra>'
     ))
     
     fig.update_layout(
         title=dict(
-            text="<b>Top 10 Most Important Features</b>",
-            font=dict(size=24, color='white', family='Inter'),
+            text="<b>Top 10 Features</b>",
+            font=dict(size=22, color='white', family='Inter'),
             x=0.5,
             xanchor='center'
         ),
         xaxis_title="<b>Importance Score</b>",
         yaxis_title="",
-        height=550,
+        height=520,
         paper_bgcolor='rgba(0,0,0,0)',
         plot_bgcolor='rgba(255,255,255,0.05)',
-        font=dict(color='white', size=13, family='Inter'),
-        xaxis=dict(gridcolor='rgba(255,255,255,0.1)', showgrid=True),
-        yaxis=dict(gridcolor='rgba(255,255,255,0.05)'),
-        margin=dict(l=20, r=80, t=80, b=60)
+        font=dict(color='white', size=12, family='Inter'),
+        xaxis=dict(gridcolor='rgba(255,255,255,0.1)'),
+        margin=dict(l=20, r=70, t=70, b=50)
     )
     
     st.plotly_chart(fig, use_container_width=True)
     
     st.markdown("<br><br>", unsafe_allow_html=True)
     
-    # Insights cards with better design
     col1, col2 = st.columns(2, gap="large")
     
     with col1:
         st.markdown("""
-        <div class='white-card'>
-            <h3 style='color: #667eea; margin-top: 0; font-size: 1.6rem;'>🌐 Network Metrics</h3>
-            <p style='color: #444; font-size: 1.05rem; line-height: 1.8;'>Network traffic is the <strong>#1 indicator</strong> of anomalies with <strong>19.2%</strong> combined importance</p>
-            <ul style='color: #666; font-size: 1rem; line-height: 2;'>
-                <li>📡 Transmit bytes/packets change during auth failures</li>
-                <li>🔄 Both inbound and outbound traffic affected</li>
-                <li>⚡ Real-time detection is possible</li>
+        <div class='content-card'>
+            <h3 style='color: #1e3c72; margin-top: 0; font-size: 1.4rem;'>Network Metrics</h3>
+            <p style='color: #374151; font-size: 1rem; line-height: 1.7;'>Network traffic patterns are the strongest indicators of anomalies, accounting for <strong>19.2%</strong> combined importance</p>
+            <ul style='color: #6b7280; font-size: 0.95rem; line-height: 1.9;'>
+                <li>Transmit bytes and packets change during authentication failures</li>
+                <li>Both inbound and outbound traffic patterns are affected</li>
+                <li>Enables real-time detection capabilities</li>
             </ul>
         </div>
         """, unsafe_allow_html=True)
     
     with col2:
         st.markdown("""
-        <div class='white-card'>
-            <h3 style='color: #764ba2; margin-top: 0; font-size: 1.6rem;'>💾 Memory Patterns</h3>
-            <p style='color: #444; font-size: 1.05rem; line-height: 1.8;'>Go memory stats reveal <strong>4 of top 5 features</strong> indicating critical signals</p>
-            <ul style='color: #666; font-size: 1rem; line-height: 2;'>
-                <li>🗑️ GC behavior differs significantly in anomalies</li>
-                <li>📦 Allocation patterns are key signals</li>
-                <li>⚠️ Memory pressure indicates potential errors</li>
+        <div class='content-card'>
+            <h3 style='color: #1e3c72; margin-top: 0; font-size: 1.4rem;'>Memory Patterns</h3>
+            <p style='color: #374151; font-size: 1rem; line-height: 1.7;'>Go memory statistics reveal <strong>4 of the top 5</strong> most important features for detection</p>
+            <ul style='color: #6b7280; font-size: 0.95rem; line-height: 1.9;'>
+                <li>Garbage collection behavior differs significantly during anomalies</li>
+                <li>Memory allocation patterns serve as key signals</li>
+                <li>Memory pressure indicates potential authentication errors</li>
             </ul>
         </div>
         """, unsafe_allow_html=True)
     
-    # Key takeaway with stunning design
     st.markdown("<br><br>", unsafe_allow_html=True)
     st.markdown("""
-    <div style='background: linear-gradient(135deg, rgba(255,255,255,0.95) 0%, rgba(255,255,255,0.9) 100%); padding: 3rem; border-radius: 25px; text-align: center; margin: 2rem 0; box-shadow: 0 20px 60px rgba(0,0,0,0.3); border: 2px solid rgba(255,255,255,0.3);'>
-        <h2 style='color: #667eea; margin-top: 0; font-size: 2.2rem; font-weight: 800;'>🎯 Key Takeaway</h2>
-        <p style='color: #333; font-size: 1.3rem; line-height: 2; margin: 1.5rem 0; font-weight: 500;'>
-            OAuth2 anomalies create a <strong style='color: #667eea;'>distinctive fingerprint</strong> across network and memory subsystems.<br>
-            The model combines <strong style='color: #764ba2;'>281 weak signals</strong> into a robust detector with <strong style='color: #10b981;'>99.6% F1-score</strong>.<br>
-            <em style='color: #666;'>No single feature dominates, ensuring production resilience and reliability.</em>
+    <div style='background: linear-gradient(135deg, rgba(255,255,255,0.96) 0%, rgba(255,255,255,0.92) 100%); padding: 2.8rem; border-radius: 20px; text-align: center; margin: 2rem 0; box-shadow: 0 20px 60px rgba(0,0,0,0.25);'>
+        <h2 style='color: #1e3c72; margin-top: 0; font-size: 1.9rem; font-weight: 700;'>Key Insights</h2>
+        <p style='color: #374151; font-size: 1.15rem; line-height: 1.9; margin: 1.5rem 0; font-weight: 400;'>
+            OAuth2 anomalies create a <strong style='color: #1e3c72;'>distinctive fingerprint</strong> across network and memory subsystems.<br>
+            The model leverages <strong style='color: #2a5298;'>281 individual signals</strong> to achieve <strong style='color: #10b981;'>99.6% F1-score</strong>.<br>
+            <em style='color: #6b7280;'>No single feature dominates, ensuring robust production performance.</em>
         </p>
     </div>
     """, unsafe_allow_html=True)
@@ -965,9 +939,9 @@ elif page == "🔍 Feature Insights":
 
 st.markdown("<br><br>", unsafe_allow_html=True)
 st.markdown("""
-<div style='text-align: center; color: white; padding: 2rem; background: rgba(255,255,255,0.05); border-radius: 20px; margin-top: 4rem;'>
-    <p style='font-size: 1.2rem; font-weight: 600; margin-bottom: 0.5rem;'>🛡️ OAuth2 Anomaly Detection System v1.0</p>
-    <p style='font-size: 1rem; opacity: 0.9;'>Built with Streamlit & Random Forest • Trained on 2,064 samples</p>
-    <p style='font-size: 0.95rem; opacity: 0.8; margin-top: 0.5rem;'>99.61% F1-Score • 0.12ms inference • Production Ready</p>
+<div style='text-align: center; color: white; padding: 2rem; background: rgba(255,255,255,0.05); border-radius: 16px; margin-top: 4rem;'>
+    <p style='font-size: 1.1rem; font-weight: 600; margin-bottom: 0.4rem; color: white;'>OAuth2 Anomaly Detection System v1.0</p>
+    <p style='font-size: 0.95rem; opacity: 0.9; color: white;'>Random Forest Classifier • Trained on 2,064 samples</p>
+    <p style='font-size: 0.9rem; opacity: 0.8; margin-top: 0.4rem; color: white;'>99.61% F1-Score • 0.12ms latency • Production Ready</p>
 </div>
 """, unsafe_allow_html=True)
